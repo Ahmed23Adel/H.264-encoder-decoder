@@ -104,7 +104,8 @@ def encode_H264(path, test = True):
         diff = current_frame - predicted_frame
         diff_dct = dct_2d(diff)
         diff_idct = idct_2d(diff_dct)
-        prev_frame = current_frame
+        prev_frame = diff_idct
+        
         break
 
 

@@ -140,15 +140,20 @@ def test_simple(path):
     # print("Done idct")
     # cv2.imwrite("origianl.jpeg",img)
     # cv2.imwrite("after_idct.jpeg",d12)("done dct")
-
-
-    for current_frame in read_video(path):
-        d1 = dct_2d(current_frame)
-        #print(d1)
-        print("done dct")
-        d12 = idct_2d(d1)
-        #print(d12)
-        print("done Idct")
-        break
-    cv2.imwrite("origianl1.jpeg", current_frame)
-    cv2.imwrite("After IDCT.jpeg",d12)
+    img = cv2.imread(r"D:\Zewail\Year 4\info\project\H.264\H.264-encoder-decoder\camera_man.png", 0)
+    d1 = dct_2d(img)
+    print("done dct")
+    d12 = idct_2d(d1)
+    print("done Idct")
+    cv2.imwrite("diff-origianl1.jpeg", img)
+    cv2.imwrite("diff-After IDCT-quan.jpeg", d12)
+    # for current_frame in read_video(path):
+    #     d1 = dct_2d(current_frame)
+    #     #print(d1)
+    #     print("done dct")
+    #     d12 = idct_2d(d1)
+    #     #print(d12)
+    #     print("done Idct")
+    #     break
+    # cv2.imwrite("origianl1.jpeg", current_frame)
+    # cv2.imwrite("After IDCT.jpeg",d12)

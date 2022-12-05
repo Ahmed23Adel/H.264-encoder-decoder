@@ -57,9 +57,9 @@ def normalize(dct_output):
 
 
 def single_block_DCT(x_in):
-    dct_output1 = single_block_DCT_(x_in)
-    norm = normalize(dct_output1)
-    output = norm / quantization(1)
+    output = single_block_DCT_(x_in)
+    output = normalize(output)
+    output = np.divide(output, quantization(1)).astype(int)
     return output
 
 def single_block_IDCT(block):

@@ -2,6 +2,8 @@ import numpy as np
 import cv2
 import math
 from dct_2d import *
+from source_coder import *
+from huffman import *
 def print_meta_data(path):
     vid_cap = cv2.VideoCapture(path)
     fps = vid_cap.get(cv2.CAP_PROP_FPS)  # OpenCV v2.x used "CV_CAP_PROP_FPS"
@@ -10,7 +12,7 @@ def print_meta_data(path):
     print('[INFO] number of frames = ' + str(frame_count))
     success, image = vid_cap.read()
     print("[INFO] image shape {}".format(image.shape))
-    return  cv2.cvtColor(image, cv2.COLOR_RGB2GRAY).shape
+    return  cv2.cvtColor(image, cv2.COLOR_RGB2GRAY).shape, fps
 
 
 def read_video(path):
@@ -86,7 +88,7 @@ def motion_compensation(prev_frame,all_motion_estimations, block_size):
 
 
 
-def encode_H264(path, test = True):
+def encode_H264(path, quan_type =1,test = True):
     """
     :param path: for the video to encode
     :param test: if true it will apply on the same procedure on simple matrix
@@ -94,19 +96,69 @@ def encode_H264(path, test = True):
     """
     if test:
         return test_simple(path)
-    block_size = (16,16)
+    block_size = (8,8)
     print("[INFO] reading {}".format(path))
-    shape_img = print_meta_data(path)
+    shape_img, fps = print_meta_data(path)
     prev_frame = np.zeros(shape_img)
+    all_frames_reordered = [shape_img[0], shape_img[1], fps, block_size[0], block_size[1]]
+    index  = 1
     for current_frame in  read_video(path):
+        cv2.imwrite("{}prev_frame -- original.jpeg".format(index), prev_frame)
+        cv2.imwrite("{}st frame -- original.jpeg".format(index), current_frame)
         all_motion_estimations = motion_estimation(current_frame,prev_frame,block_size)
+        print(prev_frame.shape, all_motion_estimations.shape)
+        # img_reord = reorder(prev_frame, all_motion_estimations)
+        # all_frames_reordered.extend(img_reord)
+        print("done all_motion_estimations")
+        print(all_motion_estimations)
         predicted_frame  = motion_compensation(prev_frame,all_motion_estimations, block_size)
+        print("done predicted_frame")
+        cv2.imwrite("{}st frame -- predicted_frame.jpeg".format(index), predicted_frame)
         diff = current_frame - predicted_frame
+        print("done diff")
+        cv2.imwrite("{}st frame -- diff.jpeg".format(index), diff)
         diff_dct = dct_2d(diff)
+        print("done diff_dct")
+        cv2.imwrite("{}st frame -- diff_dct.jpeg".format(index), diff_dct)
         diff_idct = idct_2d(diff_dct)
-        prev_frame = diff_idct
-        
-        break
+        print("done diff_idct")
+        cv2.imwrite("{}st frame -- diff_idct.jpeg".format(index), diff_idct)
+        img_reord = reorder(diff_dct,all_motion_estimations)
+        all_frames_reordered.extend(img_reord)
+        print("done reorder")
+        # entropy encoder
+        index +=1
+        prev_frame = predicted_frame + diff_idct
+        if index ==2:
+            break
+    # Now all_frames_reordered contains all frames, and all_motion_estimations
+    # Now we need to run Huffman Coding
+    np.savetxt('VideoData.csv', np.array(all_frames_reordered), delimiter=',')
+    video_dict ,video_coded = encode_huffman(all_frames_reordered)
+    return  video_dict, video_coded
+
+
+def get_frames_from_decoded_video(video_coded, video_dict ):
+    video_decoded = decode_huffman(video_coded, video_dict)
+    video_decoded = dis_run_length(video_decoded) # TODO change it to work on list not string
+    shape_img = [0,0]
+    block_size = [0,0]
+    shape_img[0], shape_img[1], fps, block_size[0], block_size[1] = video_decoded[:5]
+    length_frame = (shape_img[0]/block_size[0] * shape_img[1]/block_size[1])*2
+    video_decoded = video_decoded[5:]
+    for i in range(0, len(video_decoded), length_frame):
+        yield video_decoded[i:i+length_frame]
+
+def get_motion_vec_and_code(code, img_size, block_size):
+    pass
+def decode_H264(video_coded, video_dict ):
+    prev_frame = np.zeros((720,1280))
+    for frame in get_frames_from_decoded_video(video_coded, video_dict):
+        diff_code, motion_vector_code = get_motion_vec_and_code(frame) # split based on image size, and block size
+        diff_idct = idct_2d(diff_code)
+        predicted_frame = dis_reorder(prev_frame, motion_vector_code)
+        frame_reconstructed = predicted_frame + diff_idct
+        prev_frame = frame_reconstructed
 
 
 
@@ -143,6 +195,7 @@ def test_simple(path):
     # cv2.imwrite("after_idct.jpeg",d12)("done dct")
     img = cv2.imread(r"D:\Zewail\Year 4\info\project\H.264\H.264-encoder-decoder\camera_man.png", 0)
     d1 = dct_2d(img)
+    print("d1",d1)
     print("done dct")
     d12 = idct_2d(d1)
     print("done Idct")

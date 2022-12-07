@@ -1,66 +1,5 @@
 import numpy as np
-
-def zigRead(block):
-  l=[]#list to be filled with 1D array
-  r=0#current Row
-  c=0#current coloumn
-  rows = len(block)    # set the number of rows in the block
-  cols = len(block[0]) # set the number of coloumns in the block
-  def right(c):
-    c+=1
-    return c
-  def left(c):
-    c-=1 
-    return c
-  def up(r):
-    r-=1
-    return r
-  def down(r):
-    r+=1
-    return r 
-  #if you are in col 0 move right up and read until you reach row zero
-  #if you are in row 0 move down left and read until you reach col 0
-  #move 1 to the right, if you reach row 8 stop
-  l.append(block[r,c])
-  while r<(rows-1):
-    if r==0:
-      c=right(c)
-      l.append(block[r,c])
-      while(c!=0):
-        r=down(r)
-        c=left(c)
-        l.append(block[r,c])
-    elif c==0:
-      r=down(r)
-      l.append(block[r,c])
-      while(r!=0):
-        c=right(c)
-        r=up(r)
-        l.append(block[r,c])
-  #Here comes the second half to be read
-  #if you are in col 8 move down then move left down and read until you reach row 8
-  #if you are in row 8 move right then move right up and read until you reach col 0
-  while (r!=(rows-1)) or (c!=(cols-1)): #as long as we didn't reach the last element
-    if r==(rows-1):
-      c=right(c)
-      l.append(block[r,c])
-      while(c!=(cols-1)):
-        c=right(c)
-        r=up(r)
-        l.append(block[r,c])
-    elif c==(cols-1):
-      r=down(r)
-      l.append(block[r,c])
-      while(r!=(rows-1)):
-        c=left(c)
-        r=down(r)
-        l.append(block[r,c])
-  output=np.array(l)
-
-  return output
-
-
-
+from collections import Counter
 class Element(object):
   """
     A single element which encapsulate a letter assciated with its probability, and code
@@ -298,26 +237,55 @@ class ListElements(object):
 
 
 
-def run_huffman_algoirthm(lst_probs):
+def run_huffman_algoirthm_(lst_probs):
     if len(lst_probs) == 1: return  # Break the recursion
     lst_probs.sort_me()
     lst_probs.append_c()
     lst_probs.trunc_last()
-    run_huffman_algoirthm(lst_probs)  # I'm assuming that I work with list which is mutable
+    run_huffman_algoirthm_(lst_probs)  # I'm assuming that I work with list which is mutable
 
 
-def get_list_probs(comp_code, sub_length):
-    pass
+def split_code_chars_probs(comp_code):
+    all_keys = Counter(comp_code).keys()  # equals to list(set(words))
+    all_probs =  np.array(list(Counter(comp_code).values()))   # counts the elements' frequency
+    all_probs = all_probs /  len(all_probs)
+    return all_keys, all_probs
 
-lets = ['E', 'T','A', 'O','I','N','S','R','H','D','L','U','C','M','F','Y','W','G','P','B','V','K','X','Q','J','Z']
-probs = [12.02,9.10,8.12,7.68,7.31,6.95,6.28,6.02,5.92,4.32,3.98,2.88,2.71,2.61,2.30,2.11,2.09,2.03,1.82,1.49,1.11,0.69,0.17,0.11,0.10,0.07]
-lst = ListElements.get_list_of_elements(probs,lets)
-print(lst)
-run_huffman_algoirthm(lst)
-new_lst = lst.unpack()
-new_lst.sort_me()
-print(new_lst)
-new_lst.fine_print()
-print("Average length", new_lst.calc_avg_length())
-d = new_lst.get_fine_dict()
-print(d)
+def run_huffman_algoirthm(code):
+    lets, probs = split_code_chars_probs(code)
+    lst = ListElements.get_list_of_elements(probs, lets, is_100=False)
+    run_huffman_algoirthm_(lst)
+    new_lst = lst.unpack()
+    new_lst.sort_me()
+    print(new_lst)
+    new_lst.fine_print()
+    # print("Average length", new_lst.calc_avg_length())
+    d = new_lst.get_fine_dict()
+    # print("dict", d)
+    return d
+
+def encode_huffman(data):
+    codes = run_huffman_algoirthm(data)
+    op = []
+    for c in data:
+        c_code = codes[c]
+        op.append(c_code)
+    output_string = "".join(op)
+    return codes ,output_string
+
+
+def decode_huffman(coded_data, d):
+    i = 0
+    all_prev_code = ""
+    output = []
+    while True:
+        current_bit = coded_data[i]
+        all_prev_code = all_prev_code + current_bit
+        if all_prev_code in d.keys():
+            output.append(d[all_prev_code])
+            all_prev_code = ""
+        i +=1
+    return output
+
+
+
